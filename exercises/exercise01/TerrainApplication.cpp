@@ -44,7 +44,8 @@ void TerrainApplication::Initialize()
     BuildShaders();
 
     // (todo) 01.1: Create containers for the vertex position
-    std::vector<float> vertices;
+    std::vector<Vector3> vertices;
+    std::vector<Vector2> texture_coords;
 
     // (todo) 01.1: Fill in vertex data
     float x_scale = (1.0f / m_gridX);
@@ -62,43 +63,36 @@ void TerrainApplication::Initialize()
             float Dx = (x + 1) * x_scale - 0.5f;
             float Dy = y * y_scale - 0.5f;
             
-            vertices.push_back(Ax);
-            vertices.push_back(Ay);
-            vertices.push_back(0.0f);
+            vertices.push_back(Vector3(Ax, Ay, 0.0f));
+            vertices.push_back(Vector3(Bx, By, 0.0f));
+            vertices.push_back(Vector3(Dx, Dy, 0.0f));
+            texture_coords.push_back(Vector2(0, 0));
+            texture_coords.push_back(Vector2(0, 1));
+            texture_coords.push_back(Vector2(1, 0));
 
-            vertices.push_back(Bx);
-            vertices.push_back(By);
-            vertices.push_back(0.0f);
-
-            vertices.push_back(Dx);
-            vertices.push_back(Dy);
-            vertices.push_back(0.0f);
-
-
-            vertices.push_back(Bx);
-            vertices.push_back(By);
-            vertices.push_back(0.0f);
-
-            vertices.push_back(Cx);
-            vertices.push_back(Cy);
-            vertices.push_back(0.0f);
-
-            vertices.push_back(Dx);
-            vertices.push_back(Dy);
-            vertices.push_back(0.0f);
-            std::cout << y << std::endl;
+            vertices.push_back(Vector3(Bx, By, 0.0f));
+            vertices.push_back(Vector3(Cx, Cy, 0.0f));
+            vertices.push_back(Vector3(Dx, Dy, 0.0f));
+            texture_coords.push_back(Vector2(0, 1));
+            texture_coords.push_back(Vector2(1, 1));
+            texture_coords.push_back(Vector2(1, 0));
         }
-        std::cout << x << std::endl;
     }
 
     // (todo) 01.1: Initialize VAO, and VBO
     vao.Bind();
 
     vbo.Bind();
-    vbo.AllocateData<float>(std::span(vertices));
+    vbo.AllocateData(vertices.size() * (sizeof(Vector3) + sizeof(Vector2)));
+    for (int i = 0; i < vertices.size(); ++i) {
+        vbo.UpdateData(std::span(vertices));
+        vbo.UpdateData(std::span(texture_coords), sizeof(Vector3) * vertices.size());
+    }
 
     VertexAttribute position(Data::Type::Float, 3);
+    VertexAttribute texture_coordinates(Data::Type::Float, 2);
     vao.SetAttribute(0, position, 0);
+    vao.SetAttribute(1, texture_coordinates, sizeof(Vector3) * vertices.size());
 
 
     // (todo) 01.5: Initialize EBO
