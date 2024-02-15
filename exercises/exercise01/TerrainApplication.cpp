@@ -32,7 +32,7 @@ struct Vector3
 
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(16), m_gridY(16), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(4), m_gridY(4), m_shaderProgram(0)
 {
 }
 
@@ -46,36 +46,49 @@ void TerrainApplication::Initialize()
     // (todo) 01.1: Create containers for the vertex position
     std::vector<Vector3> vertices;
     std::vector<Vector2> texture_coords;
+    std::vector<unsigned int> indices;
 
     // (todo) 01.1: Fill in vertex data
     float x_scale = (1.0f / m_gridX);
     float y_scale = (1.0f / m_gridY);
 
+    // Initial corner
+    vertices.push_back(Vector3(-0.5f, -0.5f, 0.0f));
+    texture_coords.push_back(Vector2(0, 0));
+    // Initial column
+    for (int y = 0; y < m_gridY; ++y) {
+        float y_cord = (y + 1) * y_scale - 0.5f;
+        vertices.push_back(Vector3(-0.5f, y_cord, 0.0f));
+        texture_coords.push_back(Vector2(0, y+1));
+    }
+
     for (int x = 0; x < m_gridX; ++x)
     {
+        float x_cord = (x + 1) * x_scale - 0.5f;
+        // Bottom of x+1'th column
+        vertices.push_back(Vector3(x_cord, -0.5f, 0.0f));
+        texture_coords.push_back(Vector2(x+1, 0));
+        // Rest of x+1'th column
         for (int y = 0; y < m_gridY; ++y) {
-            float Ax = x * x_scale - 0.5f;
-            float Ay = y * y_scale - 0.5f;
-            float Bx = x * x_scale - 0.5f;
-            float By = (y + 1) * y_scale - 0.5f;
-            float Cx = (x + 1) * x_scale - 0.5f;
-            float Cy = (y + 1) * y_scale - 0.5f;
-            float Dx = (x + 1) * x_scale - 0.5f;
-            float Dy = y * y_scale - 0.5f;
-            
-            vertices.push_back(Vector3(Ax, Ay, 0.0f));
-            vertices.push_back(Vector3(Bx, By, 0.0f));
-            vertices.push_back(Vector3(Dx, Dy, 0.0f));
-            texture_coords.push_back(Vector2(0, 0));
-            texture_coords.push_back(Vector2(0, 1));
-            texture_coords.push_back(Vector2(1, 0));
+            float y_cord = (y + 1) * y_scale - 0.5f;
+            vertices.push_back(Vector3(x_cord, y_cord, 0.0f));
+            texture_coords.push_back(Vector2(x+1, y+1));
 
-            vertices.push_back(Vector3(Bx, By, 0.0f));
-            vertices.push_back(Vector3(Cx, Cy, 0.0f));
-            vertices.push_back(Vector3(Dx, Dy, 0.0f));
-            texture_coords.push_back(Vector2(0, 1));
-            texture_coords.push_back(Vector2(1, 1));
-            texture_coords.push_back(Vector2(1, 0));
+            // Vertices are created one row at a time, starting from y = 0 (-0.5) going up to m_gridY
+            // So for each y, we simply go up 1 column (+y), but for each x, we need to go up by an entire row (x * (m_gridY + 1))
+            float a = 0 + y + (x * (m_gridY + 1));
+            float b = 1 + y + (x * (m_gridY + 1));
+            float c = (m_gridY + 2) + y + (x * (m_gridY + 1));
+            float d = (m_gridY + 1) + y + (x * (m_gridY + 1));
+
+            indices.push_back(a);
+            indices.push_back(b);
+            indices.push_back(d);
+
+            indices.push_back(b);
+            indices.push_back(c);
+            indices.push_back(d);
+            // The math worked first try, or in other words, I am smart
         }
     }
 
@@ -84,27 +97,26 @@ void TerrainApplication::Initialize()
 
     vbo.Bind();
     vbo.AllocateData(vertices.size() * (sizeof(Vector3) + sizeof(Vector2)));
-    for (int i = 0; i < vertices.size(); ++i) {
-        vbo.UpdateData(std::span(vertices));
-        vbo.UpdateData(std::span(texture_coords), sizeof(Vector3) * vertices.size());
-    }
+
+    vbo.UpdateData(std::span(vertices));
+    vbo.UpdateData(std::span(texture_coords), sizeof(Vector3) * vertices.size());
+
+    // (todo) 01.5: Initialize EBO
+    ebo.Bind();
+    ebo.AllocateData<unsigned int>(std::span(indices));
+
 
     VertexAttribute position(Data::Type::Float, 3);
     VertexAttribute texture_coordinates(Data::Type::Float, 2);
     vao.SetAttribute(0, position, 0);
     vao.SetAttribute(1, texture_coordinates, sizeof(Vector3) * vertices.size());
 
-
-    // (todo) 01.5: Initialize EBO
-
-
     // (todo) 01.1: Unbind VAO, and VBO
     VertexBufferObject::Unbind();
     VertexArrayObject::Unbind();
 
-
     // (todo) 01.5: Unbind EBO
-
+    ElementBufferObject::Unbind();
 }
 
 void TerrainApplication::Update()
@@ -126,7 +138,7 @@ void TerrainApplication::Render()
 
     // (todo) 01.1: Draw the grid
     vao.Bind();
-    glDrawArrays(GL_TRIANGLES, 0, 6*m_gridX*m_gridY);
+    glDrawElements(GL_TRIANGLES, 2*3*m_gridX*m_gridY, GL_UNSIGNED_INT, 0);
 
 }
 
