@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 // Helper structures. Declared here only for this exercise
 struct Vector2
@@ -43,18 +44,55 @@ void TerrainApplication::Initialize()
     BuildShaders();
 
     // (todo) 01.1: Create containers for the vertex position
-
+    std::vector<float> vertices;
 
     // (todo) 01.1: Fill in vertex data
+    for (int x = 0; x < m_gridX; ++x)
+    {
+        for (int y = 0; y < m_gridY; ++y) {
+            vertices.push_back(x);
+            vertices.push_back(y);
+            vertices.push_back(0.0f);
 
+            vertices.push_back(x);
+            vertices.push_back(y + 1);
+            vertices.push_back(0.0f);
+
+            vertices.push_back(x + 1);
+            vertices.push_back(y);
+            vertices.push_back(0.0f);
+
+
+            vertices.push_back(x);
+            vertices.push_back(y + 1);
+            vertices.push_back(0.0f);
+
+            vertices.push_back(x + 1);
+            vertices.push_back(y + 1);
+            vertices.push_back(0.0f);
+
+            vertices.push_back(x + 1);
+            vertices.push_back(y);
+            vertices.push_back(0.0f);
+        }
+    }
 
     // (todo) 01.1: Initialize VAO, and VBO
+    vao.Bind();
+
+    vbo.Bind();
+    vbo.AllocateData<float>(std::span(vertices));
+
+    VertexAttribute position(Data::Type::Float, 3);
+    vao.SetAttribute(0, position, 0);
 
 
     // (todo) 01.5: Initialize EBO
 
 
     // (todo) 01.1: Unbind VAO, and VBO
+    VertexBufferObject::Unbind();
+    VertexArrayObject::Unbind();
 
 
     // (todo) 01.5: Unbind EBO
@@ -79,6 +117,8 @@ void TerrainApplication::Render()
     glUseProgram(m_shaderProgram);
 
     // (todo) 01.1: Draw the grid
+    vao.Bind();
+    glDrawArrays(GL_TRIANGLES, 0, 2*m_gridX*m_gridY);
 
 }
 
@@ -177,7 +217,7 @@ void TerrainApplication::BuildShaders()
 
 void TerrainApplication::UpdateOutputMode()
 {
-    for (int i = 0; i <= 4; ++i)
+    for (int i = 0; i <= 4; i++)
     {
         if (GetMainWindow().IsKeyPressed(GLFW_KEY_0 + i))
         {
