@@ -47,34 +47,48 @@ void TerrainApplication::Initialize()
     std::vector<float> vertices;
 
     // (todo) 01.1: Fill in vertex data
+    float x_scale = (1.0f / m_gridX);
+    float y_scale = (1.0f / m_gridY);
+
     for (int x = 0; x < m_gridX; ++x)
     {
         for (int y = 0; y < m_gridY; ++y) {
-            vertices.push_back(x);
-            vertices.push_back(y);
+            float Ax = x * x_scale - 0.5f;
+            float Ay = y * y_scale - 0.5f;
+            float Bx = x * x_scale - 0.5f;
+            float By = (y + 1) * y_scale - 0.5f;
+            float Cx = (x + 1) * x_scale - 0.5f;
+            float Cy = (y + 1) * y_scale - 0.5f;
+            float Dx = (x + 1) * x_scale - 0.5f;
+            float Dy = y * y_scale - 0.5f;
+            
+            vertices.push_back(Ax);
+            vertices.push_back(Ay);
             vertices.push_back(0.0f);
 
-            vertices.push_back(x);
-            vertices.push_back(y + 1);
+            vertices.push_back(Bx);
+            vertices.push_back(By);
             vertices.push_back(0.0f);
 
-            vertices.push_back(x + 1);
-            vertices.push_back(y);
+            vertices.push_back(Dx);
+            vertices.push_back(Dy);
             vertices.push_back(0.0f);
 
 
-            vertices.push_back(x);
-            vertices.push_back(y + 1);
+            vertices.push_back(Bx);
+            vertices.push_back(By);
             vertices.push_back(0.0f);
 
-            vertices.push_back(x + 1);
-            vertices.push_back(y + 1);
+            vertices.push_back(Cx);
+            vertices.push_back(Cy);
             vertices.push_back(0.0f);
 
-            vertices.push_back(x + 1);
-            vertices.push_back(y);
+            vertices.push_back(Dx);
+            vertices.push_back(Dy);
             vertices.push_back(0.0f);
+            std::cout << y << std::endl;
         }
+        std::cout << x << std::endl;
     }
 
     // (todo) 01.1: Initialize VAO, and VBO
@@ -118,7 +132,7 @@ void TerrainApplication::Render()
 
     // (todo) 01.1: Draw the grid
     vao.Bind();
-    glDrawArrays(GL_TRIANGLES, 0, 2*m_gridX*m_gridY);
+    glDrawArrays(GL_TRIANGLES, 0, 6*m_gridX*m_gridY);
 
 }
 
