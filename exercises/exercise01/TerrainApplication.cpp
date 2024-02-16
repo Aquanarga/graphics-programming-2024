@@ -6,6 +6,10 @@
 #include <iostream>
 #include <vector>
 
+#define STB_PERLIN_IMPLEMENTATION
+#include <stb_perlin.h>
+
+
 // Helper structures. Declared here only for this exercise
 struct Vector2
 {
@@ -30,9 +34,20 @@ struct Vector3
 // (todo) 01.8: Declare an struct with the vertex format
 
 
+float my_perlin_noise(float x, float y) {
+    float lacunarity = 2.0;
+    float gain = 0.5;
+    int octaves = 6;
+    
+    float amplitude = 1;
+    float x_frequency = 1;
+    float y_frequency = 1;
+
+    return stb_perlin_fbm_noise3(x * x_frequency, y * y_frequency, 0.0f, lacunarity, gain, octaves) * amplitude;
+}
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(4), m_gridY(4), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(64), m_gridY(64), m_shaderProgram(0)
 {
 }
 
@@ -52,13 +67,15 @@ void TerrainApplication::Initialize()
     float x_scale = (1.0f / m_gridX);
     float y_scale = (1.0f / m_gridY);
 
-    // Initial corner
-    vertices.push_back(Vector3(-0.5f, -0.5f, 0.0f));
+    float z = my_perlin_noise(-0.5f, -0.5f);
+    vertices.push_back(Vector3(-0.5f, -0.5f, z));
     texture_coords.push_back(Vector2(0, 0));
     // Initial column
     for (int y = 0; y < m_gridY; ++y) {
         float y_cord = (y + 1) * y_scale - 0.5f;
-        vertices.push_back(Vector3(-0.5f, y_cord, 0.0f));
+
+        float z = my_perlin_noise(-0.5f, y_cord);
+        vertices.push_back(Vector3(-0.5f, y_cord, z));
         texture_coords.push_back(Vector2(0, y+1));
     }
 
@@ -66,12 +83,15 @@ void TerrainApplication::Initialize()
     {
         float x_cord = (x + 1) * x_scale - 0.5f;
         // Bottom of x+1'th column
-        vertices.push_back(Vector3(x_cord, -0.5f, 0.0f));
+        float z = my_perlin_noise(x_cord, -0.5f);
+        vertices.push_back(Vector3(x_cord, -0.5f, z));
         texture_coords.push_back(Vector2(x+1, 0));
         // Rest of x+1'th column
         for (int y = 0; y < m_gridY; ++y) {
             float y_cord = (y + 1) * y_scale - 0.5f;
-            vertices.push_back(Vector3(x_cord, y_cord, 0.0f));
+
+            float z = my_perlin_noise(x_cord, y_cord);
+            vertices.push_back(Vector3(x_cord, y_cord, z));
             texture_coords.push_back(Vector2(x+1, y+1));
 
             // Vertices are created one row at a time, starting from y = 0 (-0.5) going up to m_gridY
@@ -117,6 +137,8 @@ void TerrainApplication::Initialize()
 
     // (todo) 01.5: Unbind EBO
     ElementBufferObject::Unbind();
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 }
 
 void TerrainApplication::Update()
@@ -139,7 +161,6 @@ void TerrainApplication::Render()
     // (todo) 01.1: Draw the grid
     vao.Bind();
     glDrawElements(GL_TRIANGLES, 2*3*m_gridX*m_gridY, GL_UNSIGNED_INT, 0);
-
 }
 
 void TerrainApplication::Cleanup()
