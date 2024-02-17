@@ -35,10 +35,11 @@ struct Vector3
 struct Vertex {
     Vertex() : Vertex(Vector3(), Vector2(), Vector3()) {}
     Vertex(Vector3 position, Vector2 texture_coordinates, Vector3 color) : 
-        position(position), texture_coordinates(texture_coordinates), color(color) {}
+        position(position), texture_coordinates(texture_coordinates), color(color), normal(Vector3()) {}
     Vector3 position;
     Vector2 texture_coordinates;
     Vector3 color;
+    Vector3 normal;
 };
 
 static Vector3 ints_to_rgb(float r, float g, float b) {
@@ -74,7 +75,7 @@ static float my_perlin_noise(float x, float y) {
 }
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(64), m_gridY(64), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(16), m_gridY(16), m_shaderProgram(0)
 {
 }
 
@@ -90,48 +91,71 @@ void TerrainApplication::Initialize()
     std::vector<unsigned int> indices;
 
     // (todo) 01.1: Fill in vertex data
+    int column_count = m_gridX + 1;
+    int row_count = m_gridY + 1;
+
     float x_scale = (1.0f / m_gridX);
     float y_scale = (1.0f / m_gridY);
 
-    float z = my_perlin_noise(-0.5f, -0.5f);
-    vertices.push_back(Vertex(Vector3(-0.5f, -0.5f, z), Vector2(0, 0), get_color(z)));
-
-    // Initial column
-    for (int y = 0; y < m_gridY; ++y) {
-        float y_cord = (y + 1) * y_scale - 0.5f;
-
-        float z = my_perlin_noise(-0.5f, y_cord);
-        vertices.push_back(Vertex(Vector3(-0.5f, y_cord, z), Vector2(0, y + 1), get_color(z)));
-    }
-
-    for (int x = 0; x < m_gridX; ++x)
+    for (int x = 0; x < column_count; ++x)
     {
-        float x_cord = (x + 1) * x_scale - 0.5f;
-        // Bottom of x+1'th column
-        float z = my_perlin_noise(x_cord, -0.5f);
-        vertices.push_back(Vertex(Vector3(x_cord, -0.5f, z), Vector2(x + 1, 0), get_color(z)));
-        // Rest of x+1'th column
-        for (int y = 0; y < m_gridY; ++y) {
-            float y_cord = (y + 1) * y_scale - 0.5f;
+        float x_cord = x * x_scale - 0.5f;
+
+        for (int y = 0; y < row_count; ++y) {
+            float y_cord = (y) * y_scale - 0.5f;
 
             float z = my_perlin_noise(x_cord, y_cord);
-            vertices.push_back(Vertex(Vector3(x_cord, y_cord, z), Vector2(x + 1, y + 1), get_color(z)));
+            vertices.push_back(Vertex(Vector3(x_cord, y_cord, z), Vector2(x, y), get_color(z)));
 
             // Vertices are created one row at a time, starting from y = 0 (-0.5) going up to m_gridY
             // So for each y, we simply go up 1 column (+y), but for each x, we need to go up by an entire row (x * (m_gridY + 1))
-            float a = 0 + y + (x * (m_gridY + 1));
-            float b = 1 + y + (x * (m_gridY + 1));
-            float c = (m_gridY + 2) + y + (x * (m_gridY + 1));
-            float d = (m_gridY + 1) + y + (x * (m_gridY + 1));
+            if (x > 0 && y > 0) {
+                float a = y + (x * (m_gridY + 1)); // Current vertex, top right
+                float b = a - 1; // One down
+                float c = y + (x * (m_gridY + 1)) - row_count - 1; // One left, one down
+                float d = a - (row_count); // One left
 
-            indices.push_back(a);
-            indices.push_back(b);
-            indices.push_back(d);
+                indices.push_back(c);
+                indices.push_back(d);
+                indices.push_back(b);
 
-            indices.push_back(b);
-            indices.push_back(c);
-            indices.push_back(d);
+                indices.push_back(d);
+                indices.push_back(a);
+                indices.push_back(b);
+            }
             // The math worked first try, or in other words, I am smart
+        }
+    }
+    
+    int vertex_count = vertices.size();
+    for (int x = 0; x < column_count; ++x)
+    {
+        for (int y = 0; y < row_count; ++y) {
+            int index = y + (x * row_count);
+            // Realized later I could have relied on x/y, instead of index, oh well
+            int up = index + 1;
+            int down = index - 1;
+            int left = index - row_count;
+            int right = index + row_count;
+
+            if (index % row_count == 0) {
+                down = index;
+            }
+            if (index % row_count == row_count - 1) {
+                up = index;
+            }
+            if (index < row_count) {
+                left = index;
+            }
+            if (index > vertex_count - row_count - 1) {
+                right = index;
+            }
+
+            float delta_x = (vertices[right].position.z - vertices[left].position.z) / (vertices[right].position.x - vertices[left].position.x);
+            float delta_y = (vertices[up].position.z - vertices[down].position.z) / (vertices[up].position.y - vertices[down].position.y);
+
+            Vertex& vertex = vertices[index];
+            vertex.normal = Vector3(delta_x, delta_y, 1.0f).Normalize();
         }
     }
 
@@ -141,17 +165,19 @@ void TerrainApplication::Initialize()
     vbo.Bind();
     vbo.AllocateData(std::span(vertices));
 
-    // (todo) 01.5: Initialize EBO
-    ebo.Bind();
-    ebo.AllocateData<unsigned int>(std::span(indices));
-
-
     VertexAttribute position(Data::Type::Float, 3);
     VertexAttribute texture_coords_att(Data::Type::Float, 2);
     VertexAttribute colors_att(Data::Type::Float, 3);
+    VertexAttribute normals_att(Data::Type::Float, 3);
+
     vao.SetAttribute(0, position, 0, sizeof(Vertex));
-    vao.SetAttribute(1, texture_coords_att, sizeof(Vector3), sizeof(Vertex));
-    vao.SetAttribute(2, colors_att, sizeof(Vector3) + sizeof(Vector2), sizeof(Vertex));
+    vao.SetAttribute(1, texture_coords_att, position.GetSize(), sizeof(Vertex));
+    vao.SetAttribute(2, colors_att, position.GetSize() + texture_coords_att.GetSize(), sizeof(Vertex));
+    vao.SetAttribute(3, normals_att, position.GetSize() + texture_coords_att.GetSize() + colors_att.GetSize(), sizeof(Vertex));
+
+    // (todo) 01.5: Initialize EBO
+    ebo.Bind();
+    ebo.AllocateData<unsigned int>(std::span(indices));
 
     // (todo) 01.1: Unbind VAO, and VBO
     VertexBufferObject::Unbind();
@@ -161,6 +187,7 @@ void TerrainApplication::Initialize()
     ElementBufferObject::Unbind();
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glEnable(GL_DEPTH_TEST);
 }
 
 void TerrainApplication::Update()
