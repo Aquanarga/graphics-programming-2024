@@ -33,8 +33,27 @@ struct Vector3
 
 // (todo) 01.8: Declare an struct with the vertex format
 
+static Vector3 ints_to_rgb(float r, float g, float b) {
+    return Vector3(r / 255, g / 255, b / 255);
+}
 
-float my_perlin_noise(float x, float y) {
+static Vector3 get_color(float z) {
+    if (z > 0.5) {
+        return ints_to_rgb(255, 255, 255); // Snow
+    }
+    if (z > 0.2) {
+        return ints_to_rgb(88, 75, 83); // Mountain
+    }
+    if (z > -0.1) {
+        return ints_to_rgb(105, 143, 63); // Grass/Forest
+    }
+    if (z > -0.2) {
+        return ints_to_rgb(234, 248, 191); // Sand
+    }
+    return ints_to_rgb(0, 117, 162); // Water
+}
+
+static float my_perlin_noise(float x, float y) {
     float lacunarity = 2.0;
     float gain = 0.5;
     int octaves = 6;
@@ -61,6 +80,7 @@ void TerrainApplication::Initialize()
     // (todo) 01.1: Create containers for the vertex position
     std::vector<Vector3> vertices;
     std::vector<Vector2> texture_coords;
+    std::vector<Vector3> colors;
     std::vector<unsigned int> indices;
 
     // (todo) 01.1: Fill in vertex data
@@ -70,6 +90,7 @@ void TerrainApplication::Initialize()
     float z = my_perlin_noise(-0.5f, -0.5f);
     vertices.push_back(Vector3(-0.5f, -0.5f, z));
     texture_coords.push_back(Vector2(0, 0));
+    colors.push_back(get_color(z));
     // Initial column
     for (int y = 0; y < m_gridY; ++y) {
         float y_cord = (y + 1) * y_scale - 0.5f;
@@ -77,6 +98,7 @@ void TerrainApplication::Initialize()
         float z = my_perlin_noise(-0.5f, y_cord);
         vertices.push_back(Vector3(-0.5f, y_cord, z));
         texture_coords.push_back(Vector2(0, y+1));
+        colors.push_back(get_color(z));
     }
 
     for (int x = 0; x < m_gridX; ++x)
@@ -86,6 +108,7 @@ void TerrainApplication::Initialize()
         float z = my_perlin_noise(x_cord, -0.5f);
         vertices.push_back(Vector3(x_cord, -0.5f, z));
         texture_coords.push_back(Vector2(x+1, 0));
+        colors.push_back(get_color(z));
         // Rest of x+1'th column
         for (int y = 0; y < m_gridY; ++y) {
             float y_cord = (y + 1) * y_scale - 0.5f;
@@ -93,6 +116,7 @@ void TerrainApplication::Initialize()
             float z = my_perlin_noise(x_cord, y_cord);
             vertices.push_back(Vector3(x_cord, y_cord, z));
             texture_coords.push_back(Vector2(x+1, y+1));
+            colors.push_back(get_color(z));
 
             // Vertices are created one row at a time, starting from y = 0 (-0.5) going up to m_gridY
             // So for each y, we simply go up 1 column (+y), but for each x, we need to go up by an entire row (x * (m_gridY + 1))
@@ -116,10 +140,11 @@ void TerrainApplication::Initialize()
     vao.Bind();
 
     vbo.Bind();
-    vbo.AllocateData(vertices.size() * (sizeof(Vector3) + sizeof(Vector2)));
+    vbo.AllocateData(vertices.size() * (sizeof(Vector3) + sizeof(Vector2) + sizeof(Vector3)));
 
     vbo.UpdateData(std::span(vertices));
     vbo.UpdateData(std::span(texture_coords), sizeof(Vector3) * vertices.size());
+    vbo.UpdateData(std::span(colors), (sizeof(Vector3) * vertices.size()) + (sizeof(Vector2) * texture_coords.size()));
 
     // (todo) 01.5: Initialize EBO
     ebo.Bind();
@@ -127,9 +152,11 @@ void TerrainApplication::Initialize()
 
 
     VertexAttribute position(Data::Type::Float, 3);
-    VertexAttribute texture_coordinates(Data::Type::Float, 2);
+    VertexAttribute texture_coords_att(Data::Type::Float, 2);
+    VertexAttribute colors_att(Data::Type::Float, 3);
     vao.SetAttribute(0, position, 0);
-    vao.SetAttribute(1, texture_coordinates, sizeof(Vector3) * vertices.size());
+    vao.SetAttribute(1, texture_coords_att, sizeof(Vector3) * vertices.size());
+    vao.SetAttribute(2, colors_att, (sizeof(Vector3) * vertices.size()) + (sizeof(Vector2) * texture_coords.size()));
 
     // (todo) 01.1: Unbind VAO, and VBO
     VertexBufferObject::Unbind();
@@ -138,7 +165,7 @@ void TerrainApplication::Initialize()
     // (todo) 01.5: Unbind EBO
     ElementBufferObject::Unbind();
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 }
 
 void TerrainApplication::Update()
