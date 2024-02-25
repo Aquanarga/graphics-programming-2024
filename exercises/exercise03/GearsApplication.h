@@ -4,6 +4,7 @@
 
 #include <ituGL/shader/ShaderProgram.h>
 #include <ituGL/geometry/Mesh.h>
+#include <ituGL/camera/Camera.h>
 
 class GearsApplication : public Application
 {
@@ -50,11 +51,12 @@ private:
     ShaderProgram::Location m_colorUniform;
 
     // (todo) 03.1: Add the world matrix uniform
-
+    ShaderProgram::Location m_worldMatrixUniform;
+    float rotSpeedRad = 1.0f;
 
     // (todo) 03.5: Add the viewProj matrix uniform
+    ShaderProgram::Location m_viewProjMatrixUniform;
 
-
-    // (todo) 03.4: Add the camera
-
+    // (todo) 03.5: Add the camera
+    Camera m_camera;
 };

@@ -7,9 +7,11 @@ layout (location = 1) in vec3 VertexNormal;
 
 
 // (todo) 03.X: Add the uniforms here
+uniform mat4 WorldMatrix;
+uniform mat4 ViewProjMatrix;
 
 
 void main()
 {
-	gl_Position = vec4(VertexPosition, 1.0);
+	gl_Position = ViewProjMatrix * WorldMatrix * vec4(VertexPosition, 1.0);
 }
