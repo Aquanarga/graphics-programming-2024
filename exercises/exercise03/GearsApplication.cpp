@@ -45,7 +45,8 @@ void GearsApplication::Update()
     m_camera.SetViewMatrix(glm::vec3(mousePosition, 1), glm::vec3(0));
 
     glm::vec3 halfSize(aspect, 1.0f, 10.0f);
-    m_camera.SetOrthographicProjectionMatrix(-halfSize, halfSize);
+    m_camera.SetPerspectiveProjectionMatrix(3.14/2, aspect, 0.1f, 10.0f);
+    //m_camera.SetOrthographicProjectionMatrix(-halfSize, halfSize);
 }
 
 void GearsApplication::Render()
