@@ -29,6 +29,7 @@ private:
     void DrawObject(const Mesh& mesh, Material& material, const glm::mat4& worldMatrix);
 
     std::shared_ptr<Texture2DObject> CreateDefaultTexture();
+    std::shared_ptr<Texture2DObject> CreateHeightTexture();
     std::shared_ptr<Texture2DObject> CreateHeightMap(unsigned int width, unsigned int height, glm::ivec2 coords);
     std::shared_ptr<Texture2DObject> LoadTexture(const char* path);
 
@@ -46,9 +47,23 @@ private:
     std::shared_ptr<Material> m_defaultMaterial;
 
     // (todo) 04.X: Add additional materials
-
+    std::shared_ptr<Material> m_terrainMaterial00;
+    std::shared_ptr<Material> m_terrainMaterial01;
+    std::shared_ptr<Material> m_terrainMaterial10;
+    std::shared_ptr<Material> m_terrainMaterial11;
+    std::shared_ptr<Material> m_waterMaterial;
 
     std::shared_ptr<Texture2DObject> m_defaultTexture;
 
     // (todo) 04.X: Add additional textures
+    std::shared_ptr<Texture2DObject> m_heightmapTexture00;
+    std::shared_ptr<Texture2DObject> m_heightmapTexture01;
+    std::shared_ptr<Texture2DObject> m_heightmapTexture10;
+    std::shared_ptr<Texture2DObject> m_heightmapTexture11;
+
+    std::shared_ptr<Texture2DObject> m_grassTexture;
+    std::shared_ptr<Texture2DObject> m_dirtTexture;
+    std::shared_ptr<Texture2DObject> m_rockTexture;
+    std::shared_ptr<Texture2DObject> m_snowTexture;
+    std::shared_ptr<Texture2DObject> m_waterTexture;
 };
