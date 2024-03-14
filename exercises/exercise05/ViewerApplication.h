@@ -47,7 +47,10 @@ private:
     Model m_model;
 
     // (todo) 05.X: Add light variables
+    glm::vec3 m_ambientColor = glm::vec3(0.25f);
+    glm::vec3 m_lightColor = glm::vec3(1.0f);
+    glm::vec3 m_lightPosition = glm::vec3(30.0f, 50.0f, 10.0f);
+    float m_lightIntensity = 1;
 
-
-
+    float m_specularExponentGrass = 100.0f;
 };
