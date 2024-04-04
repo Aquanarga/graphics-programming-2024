@@ -7,7 +7,9 @@ uniform vec4 LightAttenuation;
 float ComputeDistanceAttenuation(vec3 position)
 {
 	// (todo) 07.1: Compute distance attenuation, reading the range from LightAttenuation.x (fade start) and LightAttenuation.y (fade end)
-	return 1.0f;
+	// I THINK x and y are switched since we want it to return 1 (max/light) when close, and 0 (min/no light) when far away.
+	// So since X is the lowest number (closests) we set that as max, so when distance is max, even though it is not the highest number, it is 1
+	return smoothstep(LightAttenuation.y, LightAttenuation.x, distance(position, LightPosition));
 }
 
 float ComputeAngularAttenuation(vec3 lightDir)
