@@ -1,13 +1,15 @@
 
 // Uniforms
 // TODO 10.1 : Replace constants with uniforms with the same name
-const vec3 SphereColor = vec3(0, 0, 1);
-const vec3 SphereCenter = vec3(-2, 0, -10);
-const float SphereRadius = 1.25f;
+uniform vec3 SphereColor;
+uniform vec3 SphereCenter;
+uniform float SphereRadius;
 
-const vec3 BoxColor = vec3(1, 0, 0);
-const mat4 BoxMatrix = mat4(1,0,0,0,   0,1,0,0,   0,0,1,0,   2,0,-10,1);
-const vec3 BoxSize = vec3(1, 1, 1);
+uniform vec3 BoxColor;
+uniform mat4 BoxMatrix;
+uniform vec3 BoxSize;
+
+uniform float Smoothness;
 
 // Output structure
 struct Output
@@ -27,10 +29,11 @@ float GetDistance(vec3 p, inout Output o)
 	float dBox = BoxSDF(TransformToLocalPoint(p, BoxMatrix), BoxSize);
 
 	// TODO 10.2 : Replace Union with SmoothUnion and try different small values of smoothness
-	float d = Union(dSphere, dBox);
+	float blendFactor = 0.0f;
+	float d = SmoothUnion(dSphere, dBox, Smoothness, blendFactor);
 
 	// TODO 10.2 : Replace this with a mix, using the blend factor from SmoothUnion
-	o.color = d == dSphere ? SphereColor : BoxColor;
+	o.color = mix(SphereColor, BoxColor, blendFactor);
 
 	return d;
 }

@@ -10,10 +10,17 @@
 #include <imgui.h>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <iostream>
 
 RaymarchingApplication::RaymarchingApplication()
     : Application(1024, 1024, "Ray-marching demo")
     , m_renderer(GetDevice())
+    , m_sphereColor(0, 0, 1)
+    , m_sphereCenter(-2, 0, -10)
+    , m_sphereRadius(1.25f)
+    , m_boxColor(1, 0, 0)
+    , m_boxSize(1)
+    , m_smoothness(0.05f)
 {
 }
 
@@ -86,6 +93,15 @@ void RaymarchingApplication::InitializeMaterial()
     m_material = CreateRaymarchingMaterial("shaders/exercise10.glsl");
 
     // (todo) 10.X: Initialize material uniforms
+    m_material->SetUniformValue("SphereColor", m_sphereColor);
+    m_material->SetUniformValue("SphereCenter", m_sphereCenter);
+    m_material->SetUniformValue("SphereRadius", m_sphereRadius);
+
+    m_material->SetUniformValue("BoxColor", m_boxColor);
+    m_material->SetUniformValue("BoxMatrix", glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, -10, 1));
+    m_material->SetUniformValue("BoxSize", m_boxSize);
+
+    m_material->SetUniformValue("Smoothness", m_smoothness);
 }
 
 void RaymarchingApplication::InitializeRenderer()
@@ -129,10 +145,18 @@ void RaymarchingApplication::RenderGUI()
     if (auto window = m_imGui.UseWindow("Scene parameters"))
     {
         // (todo) 10.3: Get the camera view matrix and transform the sphere center and the box matrix
+        glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
+        glm::vec4 sphereMatrix = viewMatrix * glm::vec4(m_sphereCenter, 1.0f);
+        m_material->SetUniformValue("SphereCenter", glm::vec3(sphereMatrix));
 
         if (ImGui::TreeNodeEx("Sphere", ImGuiTreeNodeFlags_DefaultOpen))
         {
             // (todo) 10.1: Add controls for sphere parameters
+            if (ImGui::ColorEdit3("Sphere Color", &m_sphereColor[0]))
+                m_material->SetUniformValue("SphereColor", m_sphereColor);
+            ImGui::DragFloat3("Sphere Center", &m_sphereCenter[0], 0.1f, -30.0f, 10.0f);
+            if (ImGui::SliderFloat("Sphere Radius", &m_sphereRadius, 0.0f, 10.0f))
+                m_material->SetUniformValue("SphereRadius", m_sphereRadius);
 
             ImGui::TreePop();
         }
@@ -142,9 +166,26 @@ void RaymarchingApplication::RenderGUI()
             static glm::vec3 rotation(0.0f);
 
             // (todo) 10.1: Add controls for box parameters
+            if (ImGui::ColorEdit3("Box Color", &m_boxColor[0]))
+                m_material->SetUniformValue("BoxColor", m_boxColor);
+
+            ImGui::DragFloat3("Box translation", &translation[0], 0.1f, -30.0f, 10.0f);
+            ImGui::DragFloat3("Box rotation", &rotation[0], 1.0f, -180.0f, 180.0f);
+            glm::mat4 T = glm::translate(glm::mat4(1.0f), translation);
+            glm::mat4 Rx = glm::rotate(glm::radians(rotation.x), glm::vec3(1, 0, 0));
+            glm::mat4 Ry = glm::rotate(glm::radians(rotation.y), glm::vec3(0, 1, 0));
+            glm::mat4 Rz = glm::rotate(glm::radians(rotation.z), glm::vec3(0, 0, 1));
+            glm::mat4 transformationMatrix = T * Rx * Ry * Rz;
+            m_material->SetUniformValue("BoxMatrix", viewMatrix * transformationMatrix);
+
+            if (ImGui::DragFloat3("Box Size", &m_boxSize[0], 0.1f, 0.0f, 10.0f))
+                m_material->SetUniformValue("BoxSize", m_boxSize);
 
             ImGui::TreePop();
         }
+
+        if (ImGui::SliderFloat("Smoothness", &m_smoothness, 0.05f, 5.0f))
+            m_material->SetUniformValue("Smoothness", m_smoothness);
     }
 
     m_imGui.EndFrame();

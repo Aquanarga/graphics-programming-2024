@@ -40,4 +40,13 @@ private:
 
     // Materials
     std::shared_ptr<Material> m_material;
+
+    // Adding member variables cause GetUniformDataPointer() is not a thing
+    glm::vec3 m_sphereColor;
+    glm::vec3 m_sphereCenter;
+    float m_sphereRadius;
+    glm::vec3 m_boxColor;
+    glm::vec3 m_boxSize;
+    
+    float m_smoothness;
 };
