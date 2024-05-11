@@ -5,3 +5,6 @@ exercises/exercise06/UserSettings
 exercises/exercise06/Temp
 exercises/exercise06/exercise06.sln
 exercises/exercise06/.vsconfig
+*.idea
+build
+gprog-2024-exam/build

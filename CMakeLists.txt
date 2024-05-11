@@ -56,3 +56,11 @@ include_directories(
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/libraries)
 add_subdirectory(${CMAKE_SOURCE_DIR}/exercises)
+
+set(TARGETNAME exam_project)
+add_subdirectory(${TARGETNAME})
+if (TARGET ${TARGETNAME})
+	set_target_properties(${TARGETNAME} PROPERTIES
+		FOLDER ${TARGETNAME}
+		VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/${TARGETNAME})
+endif()
