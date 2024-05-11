@@ -5,6 +5,7 @@
 #include <ituGL/renderer/Renderer.h>
 #include <ituGL/camera/CameraController.h>
 #include <ituGL/utils/DearImGui.h>
+#include "IKStructure.h"
 
 class Material;
 
@@ -42,8 +43,8 @@ private:
     // Materials
     std::shared_ptr<Material> m_material;
 
-    // The hand of the robot arm
-    glm::vec3 m_hand;
+    // The first bone of the robot arm
+    Bone m_boneAlpha;
 
     // The target the robot arm is moving towards
     glm::vec3 m_targetLocation;

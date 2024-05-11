@@ -21,6 +21,7 @@ RaymarchingApplication::RaymarchingApplication()
     , m_renderer(GetDevice())
     , m_targetLocation(glm::vec3(0, 2, -10))
     , m_speed(0.05f)
+    , m_boneAlpha(glm::vec3(0, 0, -10), glm::rotate(glm::radians(90.0f), glm::vec3(1, 0, 0)), nullptr)
 {
 }
 
@@ -98,9 +99,10 @@ void RaymarchingApplication::InitializeMaterial()
     glm::vec3 jointA = glm::vec3(-3, 0, -10);
     glm::vec3 jointB = glm::vec3(-1, 0, -10);
     glm::vec3 jointC = glm::vec3(1, 0, -10);
-    m_hand = glm::vec3(3, 0, -10);
+    glm::vec3 jointD = glm::vec3(3, 0, -10);
 
-    glm::mat4x3 joints(jointA, jointB, jointC, m_hand);
+    glm::mat4x3 joints(jointA, jointB, jointC, jointD);
+    // glm::vec3 joints[4] = { jointA, jointB, jointC, m_hand };
 
     // Initialize material uniforms
     m_material->SetUniformValue("Joints", joints);
@@ -149,20 +151,24 @@ void RaymarchingApplication::MoveJoints()
     glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
 
     // Move hand towards target, but don't overshoot the target
-    glm::vec3 distance = m_targetLocation - m_hand;
-    if (glm::length(distance) > 0.1f)
-        m_hand += normalize(distance) * m_speed;
-    else
-        m_hand += distance;
+    // glm::vec3 distance = m_targetLocation - m_hand;
+    // if (glm::length(distance) > 0.1f)
+    //     m_hand += normalize(distance) * m_speed;
+    // else
+    //     m_hand += distance;
 
     glm::vec3 jointA = glm::vec3(-3, 0, -10);
     glm::vec3 jointB = glm::vec3(-1, 0, -10);
     glm::vec3 jointC = glm::vec3(1, 0, -10);
+    glm::vec3 jointD = glm::vec3(3, 0, -10);
 
-    glm::mat4x3 joints(ApplyMatrix(jointA, viewMatrix), ApplyMatrix(jointB, viewMatrix), ApplyMatrix(jointC, viewMatrix), ApplyMatrix(m_hand, viewMatrix));
+    glm::mat4x3 joints(ApplyMatrix(jointA, viewMatrix), ApplyMatrix(jointB, viewMatrix), ApplyMatrix(jointC, viewMatrix), ApplyMatrix(jointD, viewMatrix));
 
     m_material->SetUniformValue("Joints", joints);
     m_material->SetUniformValue("TargetCenter", ApplyMatrix(m_targetLocation, viewMatrix));
+
+
+    m_boneAlpha.RunIK(m_targetLocation);
 }
 
 void RaymarchingApplication::RenderGUI()
