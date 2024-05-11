@@ -1,7 +1,7 @@
 
 // Uniforms
 // Replace constants with uniforms with the same name
-uniform mat4x3 Joints;
+uniform vec3 Joints[4];
 uniform float JointsRadius;
 uniform vec3 JointsColor;
 

@@ -27,7 +27,8 @@ private:
 
     std::shared_ptr<Material> CreateRaymarchingMaterial(const char* fragmentShaderPath);
 
-    void MoveJoints();
+    void InitializeBones();
+    void MoveBones();
     void RenderGUI();
 
 private:
