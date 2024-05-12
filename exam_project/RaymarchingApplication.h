@@ -27,8 +27,8 @@ private:
 
     std::shared_ptr<Material> CreateRaymarchingMaterial(const char* fragmentShaderPath);
 
-    void InitializeBones();
-    void MoveBones();
+    void InitializeArm();
+    void MoveArm();
     void RenderGUI();
 
 private:
@@ -45,7 +45,7 @@ private:
     std::shared_ptr<Material> m_material;
 
     // IK values
-    Bone m_boneAlpha;
+    Bone m_armRoot;
     glm::vec3 m_targetLocation;
 
     float m_speed;

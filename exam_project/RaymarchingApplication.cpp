@@ -20,8 +20,8 @@ static glm::vec3 ApplyMatrix(glm::vec3 point, glm::mat4 matrix) {
 RaymarchingApplication::RaymarchingApplication()
     : Application(1024, 1024, "Ray-marching demo")
     , m_renderer(GetDevice())
-    , m_boneAlpha(glm::vec3(0, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr)
-    , m_targetLocation(glm::vec3(0, 2, 0))
+    , m_armRoot(glm::vec3(0, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr)
+    , m_targetLocation(glm::vec3(0, 4, 0))
     , m_speed(0.05f)
     , m_followTarget(true)
     , m_targetMoved(true)
@@ -36,7 +36,7 @@ void RaymarchingApplication::Initialize()
     m_imGui.Initialize(GetMainWindow());
 
     InitializeCamera();
-    InitializeBones();
+    InitializeArm();
     InitializeMaterial();
     InitializeRenderer();
 }
@@ -64,7 +64,7 @@ void RaymarchingApplication::Render()
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
 
     // Render the scene
-    MoveBones();
+    MoveArm();
     m_renderer.Render();
 
     // Render the debug user interface
@@ -94,15 +94,14 @@ void RaymarchingApplication::InitializeCamera()
     m_cameraController.SetCamera(sceneCamera);
 }
 
-void RaymarchingApplication::InitializeBones()
+void RaymarchingApplication::InitializeArm()
 {
     // glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1)) --> 45 degree rotation on the z axis
     // glm::quat(1.0f, glm::vec3()) --> 0 degrees
-    m_boneAlpha.setChild(
-        std::make_shared<Bone>(Bone(glm::vec3(3, 0, 0), glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1)),
+    m_armRoot.setChild(
+        std::make_shared<Bone>(Bone(glm::vec3(3, 0, 0), glm::quat(1.0f, glm::vec3()),
             std::make_shared<Bone>(Bone(glm::vec3(2.25, 0, 0), glm::quat(1.0f, glm::vec3()),
-                std::make_shared<Bone>(Bone(glm::vec3(1.5, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr
-                ))
+                std::make_shared<Bone>(Bone(glm::vec3(1.5, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr))
             ))
         ))
     );
@@ -110,22 +109,11 @@ void RaymarchingApplication::InitializeBones()
 
 void RaymarchingApplication::InitializeMaterial()
 {
-    m_material = CreateRaymarchingMaterial("shaders/joints.glsl");
+    m_material = CreateRaymarchingMaterial("shaders/arm.glsl");
 
-    std::vector<glm::vec3> joints;
-    joints = m_boneAlpha.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
-    std::vector<glm::mat4> bones;
-
-    // Apply view matrix to joints and create bone between them
-    for (int i = 0; i < joints.size(); ++i)
-    {
-        if (i != 0)
-        {
-            glm::vec3 halfVector = (joints[i - 1] - joints[i]) / 2.0f;
-            glm::mat4 boneMatrix = glm::translate(glm::mat4(1.0f), joints[i] + halfVector);
-            bones.emplace_back(boneMatrix);
-        }
-    }
+    // Left empty here, since MoveArm will update them properly on the first frame
+    std::vector<glm::vec3> joints = { glm::vec3(0.0f), glm::vec3(0.0f) , glm::vec3(0.0f) , glm::vec3(0.0f) };
+    std::vector<glm::mat4> bones = { glm::mat4(1.0f), glm::mat4(1.0f) , glm::mat4(1.0f) };
 
     // Initialize material uniforms
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
@@ -172,27 +160,27 @@ std::shared_ptr<Material> RaymarchingApplication::CreateRaymarchingMaterial(cons
     return material;
 }
 
-void RaymarchingApplication::MoveBones()
+void RaymarchingApplication::MoveArm()
 {
     // Move hand towards target, but don't overshoot the target
-    // glm::vec3 distance = m_targetLocation - m_hand;
+    // glm::vec3 endpoint = m_armRoot.GetEndpoint();
+    // glm::vec3 target = m_targetLocation;
+    // glm::vec3 distance = m_targetLocation - endpoint;
     // if (glm::length(distance) > 0.1f)
-    //     m_hand += normalize(distance) * m_speed;
-    // else
-    //     m_hand += distance;
+    //     target = endpoint + normalize(distance) * m_speed;
 
     if (m_followTarget && m_targetMoved)
     {
         for (int i = 0; i < 3; i++)
-            m_boneAlpha.RunIK(m_targetLocation);
+            m_armRoot.RunIK(m_targetLocation);
         m_targetMoved = false;
     }
 
     glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
 
     std::vector<glm::vec3> joints;
-    joints = m_boneAlpha.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
     std::vector<glm::mat4> bones;
+    joints = m_armRoot.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
     
     // Apply view matrix to joints and create bone between them
     for (int i = 0; i < joints.size(); ++i)
@@ -217,16 +205,12 @@ void RaymarchingApplication::RenderGUI()
     m_imGui.BeginFrame();
 
     // Draw GUI for camera controller
-    //m_cameraController.DrawGUI(m_imGui);
+    // m_cameraController.DrawGUI(m_imGui);
 
     if (auto window = m_imGui.UseWindow("Scene parameters"))
     {
-        // Get the camera view matrix and transform the sphere center and the box matrix
-        glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
-
         if (ImGui::TreeNodeEx("Target", ImGuiTreeNodeFlags_DefaultOpen))
         {
-
             // Add controls for sphere parameters
             glm::vec3 compare = m_targetLocation;
             ImGui::DragFloat3("Point", &m_targetLocation[0], 0.1f);
@@ -250,7 +234,7 @@ void RaymarchingApplication::RenderGUI()
 
         if (ImGui::TreeNodeEx("Bones", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            // Add controls for joint parameters
+            // Add controls for bone parameters
             ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("BoneRadius"), 0.1f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("BoneColor"));
 
