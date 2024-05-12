@@ -44,12 +44,12 @@ private:
     // Materials
     std::shared_ptr<Material> m_material;
 
-    // The first bone of the robot arm
+    // IK values
     Bone m_boneAlpha;
-
-    // The target the robot arm is moving towards
     glm::vec3 m_targetLocation;
 
-    // The speed the hand is moving towards the target at
     float m_speed;
+
+    bool m_followTarget;
+    bool m_targetMoved;
 };

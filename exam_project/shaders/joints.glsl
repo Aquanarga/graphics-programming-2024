@@ -23,7 +23,7 @@ float GetDistance(vec3 p, inout Output o)
 	float dTarget = SphereSDF(TransformToLocalPoint(p, TargetCenter), TargetRadius);
 
 	float distance = 999.9f;
-	for(int i = 0; i < 4; ++i)
+	for(int i = 0; i < Joints.length(); ++i)
     {
 		float dJoint = SphereSDF(TransformToLocalPoint(p, Joints[i]), JointsRadius);
 		if (dJoint < distance)

@@ -20,9 +20,11 @@ static glm::vec3 ApplyMatrix(glm::vec3 point, glm::mat4 matrix) {
 RaymarchingApplication::RaymarchingApplication()
     : Application(1024, 1024, "Ray-marching demo")
     , m_renderer(GetDevice())
+    , m_boneAlpha(glm::vec3(0, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr)
     , m_targetLocation(glm::vec3(0, 2, 0))
     , m_speed(0.05f)
-    , m_boneAlpha(glm::vec3(0, 0, 0), glm::quat(), nullptr)
+    , m_followTarget(true)
+    , m_targetMoved(true)
 {
 }
 
@@ -94,11 +96,12 @@ void RaymarchingApplication::InitializeCamera()
 
 void RaymarchingApplication::InitializeBones()
 {
-    // Result is 4 joints with a distance of 2 between each other
+    // glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1)) --> 45 degree rotation on the z axis
+    // glm::quat(1.0f, glm::vec3()) --> 0 degrees
     m_boneAlpha.setChild(
-        std::make_shared<Bone>(Bone(glm::vec3(2, 0, 0), glm::quat(),
-            std::make_shared<Bone>(Bone(glm::vec3(2, 0, 0), glm::quat(),
-                std::make_shared<Bone>(Bone(glm::vec3(2, 0, 0), glm::quat(), nullptr
+        std::make_shared<Bone>(Bone(glm::vec3(3, 0, 0), glm::rotate(glm::radians(90.0f), glm::vec3(0, 0, 1)),
+            std::make_shared<Bone>(Bone(glm::vec3(2.25, 0, 0), glm::quat(1.0f, glm::vec3()),
+                std::make_shared<Bone>(Bone(glm::vec3(1.5, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr
                 ))
             ))
         ))
@@ -110,8 +113,7 @@ void RaymarchingApplication::InitializeMaterial()
     m_material = CreateRaymarchingMaterial("shaders/joints.glsl");
 
     std::vector<glm::vec3> joints;
-    glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
-    joints = m_boneAlpha.getCoordinates(joints, viewMatrix);
+    joints = m_boneAlpha.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
 
     // Initialize material uniforms
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
@@ -163,11 +165,20 @@ void RaymarchingApplication::MoveBones()
     // else
     //     m_hand += distance;
 
-    m_boneAlpha.RunIK(m_targetLocation);
+    if (m_followTarget && m_targetMoved)
+    {
+        for (int i = 0; i < 1; i++)
+            m_boneAlpha.RunIK(m_targetLocation);
+        m_targetMoved = false;
+    }
 
     std::vector<glm::vec3> joints;
     glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
-    joints = m_boneAlpha.getCoordinates(joints, viewMatrix);
+    joints = m_boneAlpha.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
+
+    // Apply view matrix to all joints
+    for (int i = 0; i < 4; ++i)
+        joints[i] = ApplyMatrix(joints[i], viewMatrix);
 
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
     m_material->SetUniformValue("TargetCenter", ApplyMatrix(m_targetLocation, viewMatrix));
@@ -190,6 +201,7 @@ void RaymarchingApplication::RenderGUI()
             // Add controls for joint parameters
             ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("JointsRadius"), 0.1f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("JointsColor"));
+            ImGui::Checkbox("FollowTarget", &m_followTarget);
 
             ImGui::TreePop();
         }
@@ -198,7 +210,10 @@ void RaymarchingApplication::RenderGUI()
         {
 
             // Add controls for sphere parameters
+            glm::vec3 compare = m_targetLocation;
             ImGui::DragFloat3("Point", &m_targetLocation[0], 0.1f);
+            if (compare != m_targetLocation)
+                m_targetMoved = true;
             ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("TargetRadius"), 0.1f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("TargetColor"));
 
