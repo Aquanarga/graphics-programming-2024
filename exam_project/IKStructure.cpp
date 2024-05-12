@@ -16,6 +16,13 @@ void Bone::setChild(std::shared_ptr<Bone> child)
 	m_child = child;
 }
 
+bool Bone::hasChild()
+{
+	if (m_child)
+		return true;
+	return false;
+}
+
 glm::vec3 Bone::RunIK(glm::vec3 target) 
 {
 	// If there is no child this is the end point
@@ -25,10 +32,6 @@ glm::vec3 Bone::RunIK(glm::vec3 target)
 	// Convert target to local space. Local space includes a skewed coordinate system in this case (unlike when getting coordinates for drawing)
 	glm::mat4 toLocalSpace = glm::toMat4(glm::inverse(m_angle)) * glm::translate(glm::mat4(1.0f), -m_position);
 	glm::vec3 localTarget = glm::vec3(toLocalSpace * glm::vec4(target, 1.0f));
-
-	//std::cout << "Target:      " << target.x << "," << target.y << "," << target.z << "," << std::endl;
-	//std::cout << "LocalTarget: " << localTarget.x << "," << localTarget.y << "," << localTarget.z << "," << std::endl;
-	//std::cout << std::endl;
 
 	// Recursion
 	glm::vec3 endPoint = m_child->RunIK(localTarget);
@@ -59,4 +62,18 @@ std::vector<glm::vec3> Bone::getCoordinates(std::vector<glm::vec3> output, glm::
 		return m_child->getCoordinates(output, glm::translate(glm::mat4(1.0f), worldSpace), rotationMatrix);
 	}
 	return output;
+}
+
+glm::vec3 Bone::GetEndPoint()
+{
+	// If there is no child this is the end point
+	if (not m_child)
+		return m_position;
+
+	// Recursion
+	glm::vec3 endPoint = m_child->GetEndPoint();
+
+	// Convert endpoint to parents local space
+	glm::mat4 toParentSpace = glm::translate(glm::mat4(1.0f), m_position) * glm::toMat4(m_angle);
+	return glm::vec3(toParentSpace * glm::vec4(endPoint, 1.0f));
 }

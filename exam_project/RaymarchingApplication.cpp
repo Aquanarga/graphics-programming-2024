@@ -22,7 +22,7 @@ RaymarchingApplication::RaymarchingApplication()
     , m_renderer(GetDevice())
     , m_armRoot(glm::vec3(0, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr)
     , m_targetLocation(glm::vec3(0, 4, 0))
-    , m_speed(0.05f)
+    , m_speed(.1f)
     , m_followTarget(true)
     , m_targetMoved(true)
 {
@@ -163,17 +163,18 @@ std::shared_ptr<Material> RaymarchingApplication::CreateRaymarchingMaterial(cons
 void RaymarchingApplication::MoveArm()
 {
     // Move hand towards target, but don't overshoot the target
-    // glm::vec3 endpoint = m_armRoot.GetEndpoint();
-    // glm::vec3 target = m_targetLocation;
-    // glm::vec3 distance = m_targetLocation - endpoint;
-    // if (glm::length(distance) > 0.1f)
-    //     target = endpoint + normalize(distance) * m_speed;
+    glm::vec3 endpoint = m_armRoot.GetEndPoint();
+    glm::vec3 target = m_targetLocation;
+    glm::vec3 distance = m_targetLocation - endpoint;
+    if (glm::length(distance) > 0.1f)
+        target = endpoint + normalize(distance) * m_speed;
+    else
+        m_targetMoved = false;
 
     if (m_followTarget && m_targetMoved)
     {
         for (int i = 0; i < 3; i++)
-            m_armRoot.RunIK(m_targetLocation);
-        m_targetMoved = false;
+            m_armRoot.RunIK(target);
     }
 
     glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
