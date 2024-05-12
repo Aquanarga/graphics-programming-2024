@@ -35,11 +35,10 @@ glm::vec3 Bone::RunIK(glm::vec3 target)
 	// Recursion
 	glm::vec3 endPoint = m_child->RunIK(localTarget);
 
-	std::cout << "EndPoint: " << endPoint.x << "," << endPoint.y << "," << endPoint.z << "," << std::endl;
-	std::cout << std::endl;
+	//std::cout << "EndPoint: " << endPoint.x << "," << endPoint.y << "," << endPoint.z << "," << std::endl;
+	//std::cout << std::endl;
 
 	// Point towards the endpoint
-	// TODO This SEEMS to work, but make sure to throughly test it
 	glm::quat shiftAngle = glm::rotation(glm::normalize(endPoint), glm::normalize(localTarget));
 	m_angle *= shiftAngle;
 

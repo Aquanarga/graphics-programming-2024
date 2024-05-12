@@ -167,7 +167,7 @@ void RaymarchingApplication::MoveBones()
 
     if (m_followTarget && m_targetMoved)
     {
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 3; i++)
             m_boneAlpha.RunIK(m_targetLocation);
         m_targetMoved = false;
     }
