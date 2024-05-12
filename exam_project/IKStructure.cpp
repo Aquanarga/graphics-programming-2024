@@ -19,10 +19,8 @@ void Bone::setChild(std::shared_ptr<Bone> child)
 glm::vec3 Bone::RunIK(glm::vec3 target) 
 {
 	// If there is no child this is the end point
-	if (not m_child) {
-		std::cout << std::endl;
+	if (not m_child) 
 		return m_position;
-	}
 
 	// Convert target to local space. Local space includes a skewed coordinate system in this case (unlike when getting coordinates for drawing)
 	glm::mat4 toLocalSpace = glm::toMat4(glm::inverse(m_angle)) * glm::translate(glm::mat4(1.0f), -m_position);

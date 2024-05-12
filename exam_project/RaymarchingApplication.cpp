@@ -114,11 +114,27 @@ void RaymarchingApplication::InitializeMaterial()
 
     std::vector<glm::vec3> joints;
     joints = m_boneAlpha.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
+    std::vector<glm::mat4> bones;
+
+    // Apply view matrix to joints and create bone between them
+    for (int i = 0; i < joints.size(); ++i)
+    {
+        if (i != 0)
+        {
+            glm::vec3 halfVector = (joints[i - 1] - joints[i]) / 2.0f;
+            glm::mat4 boneMatrix = glm::translate(glm::mat4(1.0f), joints[i] + halfVector);
+            bones.emplace_back(boneMatrix);
+        }
+    }
 
     // Initialize material uniforms
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
-    m_material->SetUniformValue("JointsRadius", .5f);
-    m_material->SetUniformValue("JointsColor", glm::vec3(0, 0, 1));
+    m_material->SetUniformValues<const glm::mat4>("Bones", bones);
+    m_material->SetUniformValue("JointRadius", .5f);
+    m_material->SetUniformValue("JointColor", glm::vec3(0, 0, 1));
+
+    m_material->SetUniformValue("BoneRadius", .25f);
+    m_material->SetUniformValue("BoneColor", glm::vec3(0, 1, 0));
 
     m_material->SetUniformValue("TargetCenter", m_targetLocation);
     m_material->SetUniformValue("TargetRadius", .25f);
@@ -172,14 +188,26 @@ void RaymarchingApplication::MoveBones()
         m_targetMoved = false;
     }
 
-    std::vector<glm::vec3> joints;
     glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
+
+    std::vector<glm::vec3> joints;
     joints = m_boneAlpha.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
-
-    // Apply view matrix to all joints
-    for (int i = 0; i < 4; ++i)
+    std::vector<glm::mat4> bones;
+    
+    // Apply view matrix to joints and create bone between them
+    for (int i = 0; i < joints.size(); ++i)
+    {
         joints[i] = ApplyMatrix(joints[i], viewMatrix);
+        if (i != 0)
+        {
+            glm::vec3 halfVector = (joints[i - 1] - joints[i]) / 2.0f;
+            glm::mat4 boneMatrix = glm::translate(glm::mat4(1.0f), joints[i] + halfVector);
+            boneMatrix = boneMatrix * glm::toMat4(glm::rotation(glm::normalize(glm::vec3(0, 1, 0)), glm::normalize(halfVector)));
+            bones.emplace_back(boneMatrix);
+        }
+    }
 
+    m_material->SetUniformValues<const glm::mat4>("Bones", bones);
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
     m_material->SetUniformValue("TargetCenter", ApplyMatrix(m_targetLocation, viewMatrix));
 }
@@ -196,16 +224,6 @@ void RaymarchingApplication::RenderGUI()
         // Get the camera view matrix and transform the sphere center and the box matrix
         glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
 
-        if (ImGui::TreeNodeEx("Joints", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            // Add controls for joint parameters
-            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("JointsRadius"), 0.1f);
-            ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("JointsColor"));
-            ImGui::Checkbox("FollowTarget", &m_followTarget);
-
-            ImGui::TreePop();
-        }
-
         if (ImGui::TreeNodeEx("Target", ImGuiTreeNodeFlags_DefaultOpen))
         {
 
@@ -216,6 +234,25 @@ void RaymarchingApplication::RenderGUI()
                 m_targetMoved = true;
             ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("TargetRadius"), 0.1f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("TargetColor"));
+            ImGui::Checkbox("FollowTarget", &m_followTarget);
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNodeEx("Joints", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            // Add controls for joint parameters
+            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("JointRadius"), 0.1f);
+            ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("JointColor"));
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNodeEx("Bones", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            // Add controls for joint parameters
+            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("BoneRadius"), 0.1f);
+            ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("BoneColor"));
 
             ImGui::TreePop();
         }

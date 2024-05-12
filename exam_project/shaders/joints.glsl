@@ -2,8 +2,12 @@
 // Uniforms
 // Replace constants with uniforms with the same name
 uniform vec3 Joints[4];
-uniform float JointsRadius;
-uniform vec3 JointsColor;
+uniform float JointRadius;
+uniform vec3 JointColor;
+
+uniform mat4 Bones[3];
+uniform float BoneRadius;
+uniform vec3 BoneColor;
 
 uniform vec3 TargetCenter;
 uniform float TargetRadius;
@@ -21,13 +25,26 @@ struct Output
 float GetDistance(vec3 p, inout Output o)
 {
 	float dTarget = SphereSDF(TransformToLocalPoint(p, TargetCenter), TargetRadius);
-
 	float distance = 999.9f;
 	for(int i = 0; i < Joints.length(); ++i)
     {
-		float dJoint = SphereSDF(TransformToLocalPoint(p, Joints[i]), JointsRadius);
-		if (dJoint < distance)
+		float dJoint = SphereSDF(TransformToLocalPoint(p, Joints[i]), JointRadius);
+		if (dJoint < distance) {
+			o.color = JointColor;
 			distance = dJoint;
+		}
+
+		// Bones are handled in the joint loop, since joints are needed for the distance
+		if (i+1 < Joints.length())
+		{
+			float height = length(Joints[i+1] - Joints[i]) / 2;
+			float dBone = CylinderSDF(TransformToLocalPoint(p, Bones[i]), height, BoneRadius);
+			if (dBone < distance)
+			{
+				o.color = BoneColor;
+				distance = dBone;
+			}
+		}
 	}
 
 	if (dTarget < distance)
@@ -35,7 +52,6 @@ float GetDistance(vec3 p, inout Output o)
 		o.color = TargetColor;
 		return dTarget;
 	}
-	o.color = JointsColor;
 	return distance;
 }
 
