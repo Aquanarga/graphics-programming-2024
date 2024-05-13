@@ -27,9 +27,12 @@ private:
 
     std::shared_ptr<Material> CreateRaymarchingMaterial(const char* fragmentShaderPath);
 
-    void InitializeArm();
-    void MoveArm();
     void RenderGUI();
+
+    // Adds all the initial children to m_armRoot
+    void InitializeArm();
+    // Runs all code related to moving the arm
+    void UpdateArm();
 
 private:
     // Helper object for debug GUI
@@ -44,8 +47,8 @@ private:
     // Materials
     std::shared_ptr<Material> m_material;
 
-    // IK values
-    Bone m_armRoot;
+    // Values used by the arm for Inverse Kinematics
+    Joint m_armRoot;
     glm::vec3 m_targetLocation;
 
     float m_speed;

@@ -12,6 +12,7 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <iostream>
 
+// Helper function to apply mat4 to vec3
 static glm::vec3 ApplyMatrix(glm::vec3 point, glm::mat4 matrix) {
     return glm::vec3(matrix * glm::vec4(point, 1.0f));
 }
@@ -58,7 +59,7 @@ void RaymarchingApplication::Update()
     m_material->SetUniformValue("ProjMatrix", camera.GetProjectionMatrix());
     m_material->SetUniformValue("InvProjMatrix", glm::inverse(camera.GetProjectionMatrix()));
 
-    MoveArm();
+    UpdateArm();
 }
 
 void RaymarchingApplication::Render()
@@ -102,9 +103,9 @@ void RaymarchingApplication::InitializeArm()
     // glm::rotate(glm::radians(45.0f), glm::vec3(0, 0, 1)) --> 45 degree rotation on the z axis
     // glm::quat(1.0f, glm::vec3()) --> 0 degrees
     m_armRoot.setChild(
-        std::make_shared<Bone>(Bone(glm::vec3(3, 0, 0), glm::quat(1.0f, glm::vec3()),
-            std::make_shared<Bone>(Bone(glm::vec3(2.25, 0, 0), glm::quat(1.0f, glm::vec3()),
-                std::make_shared<Bone>(Bone(glm::vec3(1.5, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr))
+        std::make_shared<Joint>(Joint(glm::vec3(3, 0, 0), glm::quat(1.0f, glm::vec3()),
+            std::make_shared<Joint>(Joint(glm::vec3(2.25, 0, 0), glm::quat(1.0f, glm::vec3()),
+                std::make_shared<Joint>(Joint(glm::vec3(1.5, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr))
             ))
         ))
     );
@@ -164,12 +165,17 @@ std::shared_ptr<Material> RaymarchingApplication::CreateRaymarchingMaterial(cons
     return material;
 }
 
-void RaymarchingApplication::MoveArm()
+void RaymarchingApplication::UpdateArm()
 {
+    // Update the amount of segments
+    // While 8 (and theoretically more) are fully functional, anything above 6 can start lagging a bit
     m_material->SetUniformValue("SegmentAmount", m_segmentAmount);
+    // -1, since the root joint isn't shouldn't be included
     m_armRoot.Resize(m_segmentAmount - 1);
 
-    // Move hand towards target, but don't overshoot the target
+
+    // Change target, so that the hand is animated moving towards the target, instead always being on top of it
+    // The hand stops moving once the target has been reached (within 0.1f of the actual target)
     glm::vec3 endpoint = m_armRoot.GetEndPoint();
     glm::vec3 target = m_targetLocation;
     glm::vec3 distance = m_targetLocation - endpoint;
@@ -178,21 +184,24 @@ void RaymarchingApplication::MoveArm()
     else
         m_targetReached = true;
 
+    // Run the IK algorithm twice. More iterations = better results. Two seemed just fine for this project
     if (m_followTarget && not m_targetReached)
     {
-        for (int i = 0; i < 2; i++)
-            m_armRoot.RunIK(target);
+        m_armRoot.RunIK(target);
+        m_armRoot.RunIK(target);
     }
 
     glm::mat4 viewMatrix = m_cameraController.GetCamera()->GetCamera()->GetViewMatrix();
 
     std::vector<glm::vec3> joints;
     std::vector<glm::mat4> bones;
+    // Get coordiantes for the joints in world space
     joints = m_armRoot.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
     
-    // Apply view matrix to joints and create bone between them
+    // Apply view matrix to joints and create bone matrices between them
     for (int i = 0; i < m_maxSegmentAmount; ++i)
     {   
+        // The vector always needs to have the same size for the uniform, so once there are no more segments it's filled with empty data
         if (i >= m_segmentAmount) {
             if (i >= joints.size())
                 joints.emplace_back(glm::vec3());
@@ -200,6 +209,8 @@ void RaymarchingApplication::MoveArm()
             continue;
         }
         joints[i] = ApplyMatrix(joints[i], viewMatrix);
+
+        // Create a bone matrix between current and previous joint
         if (i != 0)
         {
             glm::vec3 halfVector = (joints[i - 1] - joints[i]) / 2.0f;
@@ -208,6 +219,8 @@ void RaymarchingApplication::MoveArm()
             bones.emplace_back(boneMatrix);
         }
     }
+
+    // Update the uniforms
     m_material->SetUniformValues<const glm::mat4>("Bones", bones);
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
     m_material->SetUniformValue("TargetCenter", ApplyMatrix(m_targetLocation, viewMatrix));
@@ -227,6 +240,7 @@ void RaymarchingApplication::RenderGUI()
             // Add controls for sphere parameters
             glm::vec3 compare = m_targetLocation;
             ImGui::DragFloat3("Point", &m_targetLocation[0], 0.1f);
+            // If target is moved, the arm needs to move
             if (compare != m_targetLocation)
                 m_targetReached = false;
             ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("TargetRadius"), 0.1f, 0.0f);
@@ -240,6 +254,7 @@ void RaymarchingApplication::RenderGUI()
             // Add controls for joint parameters
             int compare = m_segmentAmount;
             ImGui::DragInt("Number of segments", &m_segmentAmount, 0.1f, 2, 8);
+            // When segments are added or removed, the arm needs to move so the new endpoint can get to the target
             if (compare != m_segmentAmount)
                 m_targetReached = false;
             ImGui::Checkbox("FollowTarget", &m_followTarget);

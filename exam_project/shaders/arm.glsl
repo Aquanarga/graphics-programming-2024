@@ -26,19 +26,22 @@ struct Output
 // Signed distance function
 float GetDistance(vec3 p, inout Output o)
 {
-	float dTarget = SphereSDF(TransformToLocalPoint(p, TargetCenter), TargetRadius);
 	float distance = 999.9f;
+
+	// Iterating through bones and joints, overwriting distance whenever something closer is found
 	for(int i = 0; i < SegmentAmount; ++i)
     {
+		// Joints
 		float dJoint = SphereSDF(TransformToLocalPoint(p, Joints[i]), JointRadius);
 		if (dJoint < distance) {
 			o.color = JointColor;
 			distance = dJoint;
 		}
 
-		// Bones are handled in the joint loop, since joints are needed for the distance
+		// Bones
 		if (i+1 < SegmentAmount)
 		{
+			// Getting height from the joints, since it can't be given through the transformation matrix
 			float height = length(Joints[i+1] - Joints[i]) / 2;
 			float dBone = CylinderSDF(TransformToLocalPoint(p, Bones[i]), height, BoneRadius);
 			if (dBone < distance)
@@ -49,6 +52,8 @@ float GetDistance(vec3 p, inout Output o)
 		}
 	}
 
+	// Target sphere
+	float dTarget = SphereSDF(TransformToLocalPoint(p, TargetCenter), TargetRadius);
 	if (dTarget < distance)
 	{
 		o.color = TargetColor;
