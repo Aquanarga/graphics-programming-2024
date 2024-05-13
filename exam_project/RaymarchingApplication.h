@@ -51,5 +51,8 @@ private:
     float m_speed;
 
     bool m_followTarget;
-    bool m_targetMoved;
+    bool m_targetReached;
+
+    int m_maxSegmentAmount;
+    int m_segmentAmount;
 };

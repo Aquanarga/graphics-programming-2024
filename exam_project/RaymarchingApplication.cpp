@@ -24,7 +24,9 @@ RaymarchingApplication::RaymarchingApplication()
     , m_targetLocation(glm::vec3(0, 4, 0))
     , m_speed(.1f)
     , m_followTarget(true)
-    , m_targetMoved(true)
+    , m_targetReached(false)
+    , m_maxSegmentAmount(8)
+    , m_segmentAmount(4)
 {
 }
 
@@ -55,6 +57,8 @@ void RaymarchingApplication::Update()
     // Update the material properties
     m_material->SetUniformValue("ProjMatrix", camera.GetProjectionMatrix());
     m_material->SetUniformValue("InvProjMatrix", glm::inverse(camera.GetProjectionMatrix()));
+
+    MoveArm();
 }
 
 void RaymarchingApplication::Render()
@@ -64,7 +68,6 @@ void RaymarchingApplication::Render()
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
 
     // Render the scene
-    MoveArm();
     m_renderer.Render();
 
     // Render the debug user interface
@@ -112,10 +115,11 @@ void RaymarchingApplication::InitializeMaterial()
     m_material = CreateRaymarchingMaterial("shaders/arm.glsl");
 
     // Left empty here, since MoveArm will update them properly on the first frame
-    std::vector<glm::vec3> joints = { glm::vec3(0.0f), glm::vec3(0.0f) , glm::vec3(0.0f) , glm::vec3(0.0f) };
-    std::vector<glm::mat4> bones = { glm::mat4(1.0f), glm::mat4(1.0f) , glm::mat4(1.0f) };
+    std::vector<glm::vec3> joints = { glm::vec3(), glm::vec3() , glm::vec3() , glm::vec3(), glm::vec3(), glm::vec3(), glm::vec3(), glm::vec3() };
+    std::vector<glm::mat4> bones = { glm::mat4(), glm::mat4() , glm::mat4(), glm::mat4(), glm::mat4(), glm::mat4(), glm::mat4() };
 
     // Initialize material uniforms
+    m_material->SetUniformValue("SegmentAmount", m_segmentAmount);
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
     m_material->SetUniformValues<const glm::mat4>("Bones", bones);
     m_material->SetUniformValue("JointRadius", .5f);
@@ -162,6 +166,9 @@ std::shared_ptr<Material> RaymarchingApplication::CreateRaymarchingMaterial(cons
 
 void RaymarchingApplication::MoveArm()
 {
+    m_material->SetUniformValue("SegmentAmount", m_segmentAmount);
+    m_armRoot.Resize(m_segmentAmount - 1);
+
     // Move hand towards target, but don't overshoot the target
     glm::vec3 endpoint = m_armRoot.GetEndPoint();
     glm::vec3 target = m_targetLocation;
@@ -169,11 +176,11 @@ void RaymarchingApplication::MoveArm()
     if (glm::length(distance) > 0.1f)
         target = endpoint + normalize(distance) * m_speed;
     else
-        m_targetMoved = false;
+        m_targetReached = true;
 
-    if (m_followTarget && m_targetMoved)
+    if (m_followTarget && not m_targetReached)
     {
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 2; i++)
             m_armRoot.RunIK(target);
     }
 
@@ -184,8 +191,14 @@ void RaymarchingApplication::MoveArm()
     joints = m_armRoot.getCoordinates(joints, glm::mat4(1.0f), glm::mat4(1.0f));
     
     // Apply view matrix to joints and create bone between them
-    for (int i = 0; i < joints.size(); ++i)
-    {
+    for (int i = 0; i < m_maxSegmentAmount; ++i)
+    {   
+        if (i >= m_segmentAmount) {
+            if (i >= joints.size())
+                joints.emplace_back(glm::vec3());
+            bones.emplace_back(glm::mat4());
+            continue;
+        }
         joints[i] = ApplyMatrix(joints[i], viewMatrix);
         if (i != 0)
         {
@@ -195,7 +208,6 @@ void RaymarchingApplication::MoveArm()
             bones.emplace_back(boneMatrix);
         }
     }
-
     m_material->SetUniformValues<const glm::mat4>("Bones", bones);
     m_material->SetUniformValues<const glm::vec3>("Joints", joints);
     m_material->SetUniformValue("TargetCenter", ApplyMatrix(m_targetLocation, viewMatrix));
@@ -216,9 +228,20 @@ void RaymarchingApplication::RenderGUI()
             glm::vec3 compare = m_targetLocation;
             ImGui::DragFloat3("Point", &m_targetLocation[0], 0.1f);
             if (compare != m_targetLocation)
-                m_targetMoved = true;
-            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("TargetRadius"), 0.1f);
+                m_targetReached = false;
+            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("TargetRadius"), 0.1f, 0.0f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("TargetColor"));
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNodeEx("Arm", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            // Add controls for joint parameters
+            int compare = m_segmentAmount;
+            ImGui::DragInt("Number of segments", &m_segmentAmount, 0.1f, 2, 8);
+            if (compare != m_segmentAmount)
+                m_targetReached = false;
             ImGui::Checkbox("FollowTarget", &m_followTarget);
 
             ImGui::TreePop();
@@ -227,7 +250,7 @@ void RaymarchingApplication::RenderGUI()
         if (ImGui::TreeNodeEx("Joints", ImGuiTreeNodeFlags_DefaultOpen))
         {
             // Add controls for joint parameters
-            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("JointRadius"), 0.1f);
+            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("JointRadius"), 0.1f, 0.0f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("JointColor"));
 
             ImGui::TreePop();
@@ -236,7 +259,7 @@ void RaymarchingApplication::RenderGUI()
         if (ImGui::TreeNodeEx("Bones", ImGuiTreeNodeFlags_DefaultOpen))
         {
             // Add controls for bone parameters
-            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("BoneRadius"), 0.1f);
+            ImGui::DragFloat("Radius", m_material->GetDataUniformPointer<float>("BoneRadius"), 0.1f, 0.0f);
             ImGui::ColorEdit3("Color", m_material->GetDataUniformPointer<float>("BoneColor"));
 
             ImGui::TreePop();

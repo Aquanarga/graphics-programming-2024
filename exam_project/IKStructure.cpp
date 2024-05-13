@@ -16,11 +16,19 @@ void Bone::setChild(std::shared_ptr<Bone> child)
 	m_child = child;
 }
 
-bool Bone::hasChild()
+void Bone::Resize(int childAmount) 
 {
-	if (m_child)
-		return true;
-	return false;
+	if (childAmount == 0)
+	{
+		if(m_child)
+			m_child = nullptr;
+		return;
+	}
+
+	if (not m_child)
+		m_child = std::make_shared<Bone>(Bone(glm::vec3(1.5, 0, 0), glm::quat(1.0f, glm::vec3()), nullptr));
+	
+	m_child->Resize(childAmount - 1);
 }
 
 glm::vec3 Bone::RunIK(glm::vec3 target) 
