@@ -5,6 +5,7 @@ uniform vec3 Joints[8];
 uniform float JointRadius;
 uniform vec3 JointColor;
 
+// The max size of the bone array is one less than that of Joints, since there should always be one less
 uniform mat4 Bones[7];
 uniform float BoneRadius;
 uniform vec3 BoneColor;

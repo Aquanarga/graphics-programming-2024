@@ -168,26 +168,24 @@ std::shared_ptr<Material> RaymarchingApplication::CreateRaymarchingMaterial(cons
 void RaymarchingApplication::UpdateArm()
 {
     // Update the amount of segments
-    // While 8 (and theoretically more) are fully functional, anything above 6 can start lagging a bit
     m_material->SetUniformValue("SegmentAmount", m_segmentAmount);
     // -1, since the root joint isn't shouldn't be included
     m_armRoot.Resize(m_segmentAmount - 1);
 
 
-    // Change target, so that the hand is animated moving towards the target, instead always being on top of it
-    // The hand stops moving once the target has been reached (within 0.1f of the actual target)
-    glm::vec3 endpoint = m_armRoot.GetEndPoint();
-    glm::vec3 target = m_targetLocation;
-    glm::vec3 distance = m_targetLocation - endpoint;
-    if (glm::length(distance) > 0.1f)
-        target = endpoint + normalize(distance) * m_speed;
-    else
-        m_targetReached = true;
-
-    // Run the IK algorithm twice. More iterations = better results. Two seemed just fine for this project
+    // Run the IK algorithm
     if (m_followTarget && not m_targetReached)
     {
-        m_armRoot.RunIK(target);
+        // Change target, so that the hand is animated moving towards the target, instead always being on top of it
+        // The hand stops moving once the target has been reached (within 0.1f of the actual target)
+        glm::vec3 endpoint = m_armRoot.GetEndPoint();
+        glm::vec3 target = m_targetLocation;
+        glm::vec3 distance = m_targetLocation - endpoint;
+        if (glm::length(distance) > 0.1f && glm::length(distance) > m_speed)
+            target = endpoint + normalize(distance) * m_speed;
+        else
+            m_targetReached = true;
+
         m_armRoot.RunIK(target);
     }
 
@@ -251,13 +249,14 @@ void RaymarchingApplication::RenderGUI()
 
         if (ImGui::TreeNodeEx("Arm", ImGuiTreeNodeFlags_DefaultOpen))
         {
+            ImGui::Checkbox("FollowTarget", &m_followTarget);
+            ImGui::DragFloat("Speed", &m_speed, 0.01f, 0.0f, 0.5f);
             // Add controls for joint parameters
             int compare = m_segmentAmount;
-            ImGui::DragInt("Number of segments", &m_segmentAmount, 0.1f, 2, 8);
+            ImGui::DragInt("Number of Joints", &m_segmentAmount, 0.1f, 2, 8);
             // When segments are added or removed, the arm needs to move so the new endpoint can get to the target
             if (compare != m_segmentAmount)
                 m_targetReached = false;
-            ImGui::Checkbox("FollowTarget", &m_followTarget);
 
             ImGui::TreePop();
         }
